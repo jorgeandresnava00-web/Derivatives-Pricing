@@ -1,0 +1,9 @@
+# Tema visual del dashboard (estética "terminal" oscura + naranja).
+# Streamlit lee este archivo automáticamente al arrancar.
+[theme]
+base = "dark"                          # punto de partida oscuro
+primaryColor = "#F5821F"               # naranja: acentos, widgets, selección
+backgroundColor = "#2B2B33"            # fondo general (charcoal)
+secondaryBackgroundColor = "#34343E"   # paneles, tarjetas, sidebar
+textColor = "#E8E8EA"                  # texto claro
+font = "sans serif"

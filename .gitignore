@@ -1,0 +1,22 @@
+# Entorno virtual
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Secrets (por si agregas credenciales en el futuro)
+.env
+secrets.yaml
+
+# Archivos de Claude Code
+.claude/
+
+# Archivos de desarrollo local que no son parte del pipeline
+Plan_Implementacion_Fase1.html
+Skills/

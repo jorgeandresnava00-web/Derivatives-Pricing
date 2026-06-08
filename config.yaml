@@ -1,0 +1,8 @@
+instrumentos:
+  ES=F:   { nombre: "E-mini S&P 500", q: 0.013, u: 0.0,   spot: "^GSPC", factor: 1.0   }
+  GC=F:   { nombre: "Oro",            q: 0.0,   u: 0.004, spot: "GLD",   factor: 10.89 }
+  SI=F:   { nombre: "Plata",          q: 0.0,   u: 0.005, spot: "SLV",   factor: 1.11  }
+
+tasa_ticker: "^IRX"      # T-bill 13 semanas — fuente de r
+banda_costos: 0.005      # 0.5% — si |basis| > banda, hay señal de arbitraje
+ruta_csv: "data/historico.csv"

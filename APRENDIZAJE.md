@@ -61,7 +61,7 @@ F_teórico = S × e^((r − q + u) × T)
 | 9 | dashboard.py | ✅ Completo | ✅ Comprendido |
 | 9.5 | backfill.py | ✅ Completo | ✅ Comprendido |
 | 9.6 | Rediseño dashboard (mockup) | ✅ Completo | ✅ Comprendido |
-| 10 | GitHub Actions | ⬜ Pendiente | — |
+| 10 | GitHub Actions + deploy | ✅ Completo | ✅ Comprendido |
 
 ---
 
@@ -777,6 +777,110 @@ Solo se reescribieron las 20 filas de GC=F; ES=F y SI=F quedaron **byte-idéntic
 
 ---
 
+## PASO 10 — GitHub Actions + Streamlit Cloud
+
+### ¿Qué se construyó?
+
+La capa de automatización. El pipeline que antes corría a mano ahora se ejecuta solo cada día en la nube. Dos piezas:
+1. **GitHub Actions** — el robot que corre `run.py` y actualiza el CSV en GitHub.
+2. **Streamlit Cloud** — el servidor que sirve el dashboard 24/7 desde el repo.
+
+### El flujo completo que quedó montado
+
+```
+Lunes-viernes a las 21:00 UTC (3 PM CT)
+        ↓
+GitHub Actions corre run.py en una VM Linux temporal
+        ↓
+CSV actualizado → git commit + git push al repo
+        ↓
+Streamlit Cloud detecta el cambio automáticamente
+        ↓
+El dashboard muestra los datos del día
+```
+
+### Archivos creados
+
+| Archivo | Qué hace |
+|---|---|
+| `.gitignore` | Lista de archivos que Git NO sube (.venv, __pycache__, .claude…) |
+| `.github/workflows/daily_run.yml` | El "manual de instrucciones" del robot |
+
+### El workflow explicado línea a línea
+
+```yaml
+on:
+  schedule:
+    - cron: '0 21 * * 1-5'   # min hora día mes día-semana → 21:00 UTC lun-vie
+  workflow_dispatch:           # botón manual en GitHub
+
+jobs:
+  actualizar_historico:
+    runs-on: ubuntu-latest     # VM Linux limpia, se destruye al terminar
+    permissions:
+      contents: write          # necesario para hacer git push
+
+    steps:
+      - uses: actions/checkout@v4        # clona el repo
+      - uses: actions/setup-python@v5   # instala Python 3.11
+      - run: pip install -r requirements.txt
+      - run: python run.py
+
+      - name: Guardar CSV
+        run: |
+          git config user.name "github-actions[bot]"
+          git add data/historico.csv
+          git diff --staged --quiet || git commit -m "data: actualizar historico $(date)"
+          git push
+```
+
+**La línea más importante:**
+```bash
+git diff --staged --quiet || git commit -m "..."
+```
+`||` = "si lo anterior FALLÓ (=hay cambios), entonces haz el commit". Si el CSV no cambió (feriado, mercado cerrado), no genera un commit vacío.
+
+### Conceptos nuevos del paso
+
+| Concepto | Qué es |
+|---|---|
+| Repo local vs remoto | Dos copias distintas. `git push` sube la tuya; `git pull` baja la del servidor |
+| `git push` rechazado (fetch first) | El remoto tiene commits que tu local no tiene — hay que `git pull` primero |
+| Runner | La VM temporal donde GitHub ejecuta cada job. Se crea limpia y se destruye al terminar |
+| `cron: '0 21 * * 1-5'` | Formato: `min hora día-del-mes mes día-de-semana`. 1-5 = lun a vie |
+| `workflow_dispatch` | Botón manual en la pestaña Actions de GitHub |
+| `permissions: contents: write` | El robot necesita permiso explícito para hacer git push al propio repo |
+| Streamlit Cloud | Servidor gratuito que sirve tu dashboard 24/7; se reconecta al repo en cada push |
+
+### Bug corregido: deduplicación en storage.py
+
+`guardar_registro` hacía `concat` sin verificar duplicados. Si el robot corre dos veces en el mismo día (manual + cron), quedaban dos filas para la misma `fecha + ticker`.
+
+**Fix:** antes del concat, verificar si `fecha + ticker` ya existe en el CSV. Si sí → `return` sin escribir. `fecha + ticker` es la **llave primaria** del CSV (como en una base de datos relacional).
+
+```python
+ya_existe = (
+    (df_existente["fecha"] == registro["fecha"]) &
+    (df_existente["ticker"] == registro["ticker"])
+).any()
+if ya_existe:
+    return
+```
+
+### ¿Por qué ignoramos .claude/ en el .gitignore?
+
+Es andamiaje de la herramienta (Claude Code), no del proyecto. Contiene rutas locales de tu Windows, configuración de la sesión, lanzador del preview. No le sirve a nadie más y no es reproducible en otra máquina. Regla: **sube lo que alguien necesitaría para reproducir el proyecto desde cero.**
+
+### Respuestas y observaciones del humano
+
+- **¿Qué es GitHub Actions?** → "un robot en la nube que ejecuta código automáticamente según reglas que tú defines." ✅
+- **Cron syntax:** → identificó que 1-5 son lunes a viernes y 21 es la hora. ✅
+- **El CSV que actualiza el robot:** → preguntó si actualiza el local o el de GitHub. **Clavó el concepto** después de la explicación (son dos copias distintas; `git pull` para sincronizar). ✅
+- **`||` condicional:** → "si el CSV no cambió, no hace commit — evita commits vacíos." ✅
+- **Bug de intraday:** → detectó solo que correr el workflow antes del cierre podría ensuciar el CSV con precios no-EOD. Observación correcta → llevó al fix de deduplicación. Razonamiento bottom-up de calidad.
+
+---
+
 ## PASO 2 — config.yaml *(próximo)*
 
 > Se documenta cuando lleguemos.
@@ -794,6 +898,7 @@ Solo se reescribieron las 20 filas de GC=F; ES=F y SI=F quedaron **byte-idéntic
 | 5 | 2026-06-07 | Pasos 8.5 + 9 completos | Construyó el spot real (8.5, arregló basis artificial) y los 10 bloques del dashboard (9). Dominó conceptos nuevos: máscaras booleanas, suma de booleanos como conteo, modelo de re-run de Streamlit, `pivot`, atribución de la fórmula, config.toml vs CSS. Analogía propia destacada: if/elif/else = IF anidado de Excel. Cerró proponiendo un rediseño (mockup propio) → planeado como 9.5 (backfill) + 9.6 (rediseño terminal, una pantalla, vista por instrumento). |
 | 6 | 2026-06-07 | Paso 9.5 (backfill) | Construyó `backfill.py` + funciones `serie_*` en data.py. Predijo correcto que T era mayor en el pasado (convergencia). Captó por qué solo data.py cambia (separación de responsabilidades → 80% reuso). Entendió ALINEAR series por fecha vs pegar por posición, y el de-dup por (fecha, ticker). **Punto alto:** diagnosticó solo el sesgo del oro (16/20 COMPRA FUTURO = proxy GLD inflado, no arbitraje) — "una señal que no se cierra es error de medición". Gap inicial: no sabía cuál módulo cambia (se enseñó con la tabla de reuso). |
 | 7 | 2026-06-08 | Paso 9.6 (rediseño terminal) + recalibración oro | Claude implementó primero el `dashboard.py` fiel al mockup (Plotly + HTML/CSS, una pantalla, vista por instrumento), luego sesión de enseñanza. El humano clavó las 3 preguntas del quiz a la primera. Dominó: frontera run.py/dashboard.py, las 3 capas (Streamlit/HTML-CSS/Plotly), modelo de re-ejecución de Streamlit, memoria entre reruns (variable vs widget vs session_state vs cache), recorrido del dato (fila vs d). Pidió analogía → teatro (actor con amnesia) selló el modelo de memoria. Decisión propia: híbrido σ-bands (visual) + banda fija (señal real). Pidió más aire entre paneles → ajuste de gaps + containers con borde. **Cierre:** detectó solo que faltaba la línea −2σ en proximidad (fix), y pidió ejecutar la solución A del oro: se reverificó que no hay spot directo en yfinance (C descartada), se calibró el factor 10.96→10.89 con datos reales y se regeneró el CSV del oro por escalado lineal exacto (sesgo −0.9%→−0.25%, 16 COMPRA falsos → distribución sana). |
+| 8 | 2026-06-08 | Paso 10 (GitHub Actions + Streamlit Cloud) | Fase de automatización completa: `.gitignore`, `git init`, primer commit, GitHub Actions workflow (`daily_run.yml`), push al repo, corrida manual en verde, Streamlit Cloud conectado. Conceptos clavados: cron syntax `0 21 * * 1-5`, local vs remoto (push/pull), `||` condicional en bash, deduplicación fecha+ticker en storage.py (bug detectado por el humano). **Momento real de aprendizaje:** al hacer git push tras el fix de storage.py, el servidor de GitHub rechazó el push porque el robot ya había commiteado el CSV → "fetch first". El humano entendió que local y remoto son copias distintas y hay que sincronizar. Destaca: preguntó si el workflow ensuciaba el CSV al correrlo durante el mercado (intraday) → diagnóstico correcto, llevó al fix de deduplicación. **Sistema funcionando autónomo:** cada día lunes-viernes a las 3 PM CT el robot corre solo, actualiza el CSV en GitHub, y el dashboard en Streamlit Cloud se refresca automáticamente. |
 
 ---
 

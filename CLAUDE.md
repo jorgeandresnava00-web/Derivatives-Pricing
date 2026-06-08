@@ -51,7 +51,7 @@ run.py → src/data.py + src/maturity.py + src/valuation.py + src/arbitrage.py +
 | 9 | dashboard.py | ✅ |
 | 9.5 | Backfill de histórico | ✅ |
 | 9.6 | Rediseño del dashboard (mockup) | ✅ |
-| 10 | GitHub Actions | ⬜ |
+| 10 | GitHub Actions + Streamlit Cloud | ✅ |
 
 **Paso 9.5 — Backfill de histórico ✅ (2026-06-07):** `backfill.py` + funciones `serie_*` en `data.py` (devuelven la serie completa indexada por fecha; las escalares siguen para `run.py`). Alinea spot/futuro/r por fecha (`pd.DataFrame({...}).dropna()`), recalcula T por día, salta días ya guardados (no pisa la corrida real). Resultado: 60 filas, 8-may→5-jun. **Hallazgo para 9.6:** GC=F dispara COMPRA FUTURO 16/20 días (basis ≈ −0.9% constante) = sesgo del proxy `GLD×10.96` (paso 8.5), NO arbitraje. Recalibrar factor a ~10.86 antes/durante el 9.6. Ver detalle en `APRENDIZAJE.md`.
 

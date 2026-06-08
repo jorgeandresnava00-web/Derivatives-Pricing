@@ -9,6 +9,12 @@ def guardar_registro(ruta: str, registro: dict) -> None:
 
     if ruta.exists():
         df_existente = pd.read_csv(ruta)
+        ya_existe = (
+            (df_existente["fecha"] == registro["fecha"]) &
+            (df_existente["ticker"] == registro["ticker"])
+        ).any()
+        if ya_existe:
+            return
         df_actualizado = pd.concat([df_existente, nueva_fila], ignore_index=True)
     else:
         df_actualizado = nueva_fila

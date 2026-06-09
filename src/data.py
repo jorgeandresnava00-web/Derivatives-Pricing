@@ -9,8 +9,17 @@ def precio_cierre(ticker: str) -> float:
 
 
 def fecha_ultimo_cierre(ticker: str = "^GSPC") -> str:
-    """Devuelve la fecha del último cierre EOD disponible, en formato ISO (YYYY-MM-DD)."""
+    """Devuelve la fecha del último cierre EOD completado, en formato ISO (YYYY-MM-DD).
+
+    Si yfinance incluye el día de hoy (mercado aún abierto, datos intraday),
+    lo ignora y devuelve el día anterior cerrado.
+    """
+    from datetime import date
     datos = yf.Ticker(ticker).history(period="5d")
+    today = date.today()
+    for ts in reversed(datos.index):
+        if ts.date() < today:
+            return ts.date().isoformat()
     return datos.index[-1].date().isoformat()
 
 

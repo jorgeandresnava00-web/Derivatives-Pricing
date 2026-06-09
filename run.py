@@ -1,6 +1,5 @@
 import yaml
-from datetime import date
-from src.data import precio_cierre, precio_spot, tasa_libre_riesgo
+from src.data import precio_cierre, precio_spot, tasa_libre_riesgo, fecha_ultimo_cierre
 from src.maturity import tiempo_a_vencimiento
 from src.valuation import valuar_futuro
 from src.arbitrage import calcular_basis, señal_arbitraje
@@ -11,7 +10,7 @@ with open("config.yaml", encoding="utf-8") as f:
 
 r = tasa_libre_riesgo()
 T = tiempo_a_vencimiento()
-hoy = date.today().isoformat()
+hoy = fecha_ultimo_cierre()
 
 for ticker, params in cfg["instrumentos"].items():
     S         = precio_spot(params["spot"], params["factor"])

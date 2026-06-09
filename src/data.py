@@ -8,6 +8,12 @@ def precio_cierre(ticker: str) -> float:
     return float(datos["Close"].iloc[-1])
 
 
+def fecha_ultimo_cierre(ticker: str = "^GSPC") -> str:
+    """Devuelve la fecha del último cierre EOD disponible, en formato ISO (YYYY-MM-DD)."""
+    datos = yf.Ticker(ticker).history(period="5d")
+    return datos.index[-1].date().isoformat()
+
+
 def precio_spot(ticker: str, factor: float) -> float:
     """Precio spot del subyacente, escalado por 'factor'.
 
